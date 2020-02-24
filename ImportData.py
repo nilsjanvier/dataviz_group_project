@@ -230,7 +230,7 @@ def Main():
     tickers = data.getSymbols()
     
     #On prend juste les 10 premiers pour le moment 
-    for i in range(1):
+    for i in range(10):
         
         df = data.getData(tickers[i])
         df = data.computeIndicators(df)
