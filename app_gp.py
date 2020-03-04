@@ -57,6 +57,48 @@ def get_top_bar(
 assets = ['BTC','ETH','XRP']
 strategies = ['moving average', 'boolinger bands', 'RSI', 'other']
 
+
+# returns chart div
+def chart_div(pair):
+    return html.Div(
+        id=pair + "graph_div",
+        className="display-none",
+        children=[
+            html.Div(
+                id=pair + "menu",
+                className="not_visible",
+                children=[
+                    # Styles checklist
+                    html.Div(
+                        id=pair + "style_tab",
+                        children=[
+                            dcc.RadioItems(
+                                id=pair + "chart_type",
+                                options=[
+                                    {
+                                        "label": "Candlesticks",
+                                        "value": "candlestick_trace",
+                                    }
+                                ],
+                                value="colored_bar_trace",
+                            )
+                        ],
+                    )         
+                ]
+            ),
+            # Graph div
+            html.Div(
+                dcc.Graph(
+                    id=pair + "chart",
+                    className="chart-graph",
+                    config={"displayModeBar": False, "scrollZoom": True},
+                )
+            ),
+        ]
+    )
+
+
+
 app.layout = html.Div([
     html.Div(
         className="three columns div-left-panel",
@@ -120,9 +162,9 @@ app.layout = html.Div([
                     children= [
                         html.Div(
                             dcc.Graph(
-                            id='pair' + "chart",
-                            className="chart-graph",
-                            config={"displayModeBar": False, "scrollZoom": True},
+                                id='pair' + "chart",
+                                className="chart-graph",
+                                config={"displayModeBar": False, "scrollZoom": True},
                             )
                         )
                     ]
