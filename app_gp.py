@@ -2,8 +2,13 @@ import dash
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output
+from datetime import datetime as dt
+from plotly.subplots import make_subplots
+
 
 import pandas as pd
+
+import code2
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
@@ -13,6 +18,10 @@ app = dash.Dash(
 )
 
 df = pd.read_csv('https://plotly.github.io/datasets/country_indicators.csv')
+
+
+
+tickers, liste_df, figure = code2.Main()
 
 available_indicators = df['Indicator Name'].unique()
 
@@ -46,16 +55,18 @@ def get_top_bar_cell(cellTitle, cellValue):
 
 # Returns HTML Top Bar for app layout
 def get_top_bar(
-    sharpe=3.432, returns=6577, volatility=32.112,
+    sharpe=3.432, returns=6577, volatility=32.112, time_day = str(dt.today())[:16]
 ):
     return [
-        get_top_bar_cell("Sharpe", sharpe),
-        get_top_bar_cell("Return", returns),
-        get_top_bar_cell("Volatility", volatility),
+        #get_top_bar_cell("Sharpe", sharpe),
+        #get_top_bar_cell("Return", returns),
+        #get_top_bar_cell("Volatility", volatility),
+        get_top_bar_cell("Last Date", time_day)
     ]
 
 assets = ['BTC','ETH','XRP']
 strategies = ['moving average', 'boolinger bands', 'RSI', 'other']
+
 
 
 # returns chart div
@@ -135,26 +146,31 @@ app.layout = html.Div([
     html.Div(
         className="nine columns div-right-panel",
         children=[
+#             html.Div(
+#                 id="top_bar", className="row div-top-bar", children=get_top_bar()
+#             ),
+#             html.Div([
+#                 dcc.Dropdown(
+#                     id = "asset",
+#                     options = [{'label' : i, 'value' : i} for i in tickers],
+#                     value = 'BTC_USD'
+#                 )
+#             ],
+#             style = {'width' : '16%', 'display' : 'inline-block'}
+#             ),
+#             html.Div([
+#                 dcc.Dropdown(
+#                     id = "strategies",
+#                     options = [{'label' : i, 'value' : i} for i in strategies],
+#                     value = 'moving average'
+#                 )
+#             ],
+#             style = {'width' : '20%', 'display' : 'inline-block'}
+#             ),
             html.Div(
-                id="top_bar", className="row div-top-bar", children=get_top_bar()
-            ),
-            html.Div([
-                dcc.Dropdown(
-                    id = "asset",
-                    options = [{'label' : i, 'value' : i} for i in assets],
-                    value = 'BTC'
-                )
-            ],
-            style = {'width' : '16%', 'display' : 'inline-block'}
-            ),
-            html.Div([
-                dcc.Dropdown(
-                    id = "strategies",
-                    options = [{'label' : i, 'value' : i} for i in strategies],
-                    value = 'moving average'
-                )
-            ],
-            style = {'width' : '20%', 'display' : 'inline-block'}
+                id='update_date',
+                className='row div-top-bar',
+                children=get_top_bar()
             ),
             html.Div(
                     id="charts",
@@ -163,8 +179,9 @@ app.layout = html.Div([
                         html.Div(
                             dcc.Graph(
                                 id='pair' + "chart",
-                                className="chart-graph",
-                                config={"displayModeBar": False, "scrollZoom": True},
+                                figure = {
+                                    "data" : figure.data,
+                                    "layout" : figure.layout}
                             )
                         )
                     ]

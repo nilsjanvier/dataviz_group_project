@@ -12,7 +12,10 @@ import glob
 
 from plotly.offline import plot
 import plotly.graph_objs as go
+import plotly.io as pio
+pio.templates
 
+from plotly.subplots import make_subplots
 
 class Data:
     def __init__(self):
@@ -144,6 +147,13 @@ class Data:
         
         layout = go.Layout()
         fig = go.Figure(layout=layout)
+        
+        fig = make_subplots(
+            rows=2, cols=1,
+            column_widths=[0.6],
+            row_heights=[0.4, 0.6],
+            specs=[[{"type": "scatter"}],
+                   [{"type": "bar"}]])
         fig.add_trace(
             go.Candlestick(
             x=df['Date'],
@@ -151,33 +161,43 @@ class Data:
             close=df['Close'],
             high=df['High'],
             low=df['Low'],
-            name="Candlesticks"))
+            name="Candlesticks"),
+            row=1, col=1)
         fig.add_trace(
             go.Scatter(
             x=df['Date'],
             y=df['20_sma'],
             name="20 SMA",
-            line=dict(color=('rgba(102, 207, 255, 50)'))))
+            line=dict(color=('rgba(102, 207, 255, 50)'))),
+            row=1, col=1)
         fig.add_trace(go.Scatter(
             x=df['Date'],
             y=df['50_sma'],
             name="50 SMA",
-            line=dict(color=('rgba(255, 207, 102, 50)'))))
+            line=dict(color=('rgba(255, 207, 102, 50)'))),
+            row=1, col=1)
         fig.add_trace(go.Scatter(
             x=df['Date'],
             y=df['200_sma'],
             name="200 SMA",
-            line=dict(color=('rgba(207, 255, 102, 50)'))))
+            line=dict(color=('rgba(207, 255, 102, 50)'))),
+            row=1, col=1)
         fig.add_trace(go.Scatter(
             x=df['Date'],
             y=df['low_boll'],
             name="Lower Bollinger Band",
-            line=dict(color=('rgba(50, 102, 255, 50)'))))
+            line=dict(color=('rgba(50, 102, 255, 50)'))),
+            row=1, col=1)
         fig.add_trace(go.Scatter(
             x=df['Date'],
             y=df['high_boll'],
             name="High Bollinger Band",
-            line=dict(color=('rgba(50, 102, 255, 50)'))))
+            line=dict(color=('rgba(50, 102, 255, 50)'))),
+            row=1, col=1)
+        # fig.add_trace(go.Bar(
+        #     x=freq["x"][0:10],
+        #     y=df.index, 
+        #     row=1, col=2)
         
         visible = [True] * 6 + [False] * 6 * (size-1)
         buttons = list()
@@ -197,49 +217,70 @@ class Data:
             high=df['High'],
             low=df['Low'],
             name="Candlesticks" + str(index),
-            visible = False))
+            visible = False),
+            row=1, col=1)
         fig.add_trace(
             go.Scatter(
             x=df['Date'],
             y=df['20_sma'],
             name="20 SMA" + str(index),
             visible = False,
-            line=dict(color=('rgba(102, 207, 255, 50)'))))
+            line=dict(color=('rgba(102, 207, 255, 50)'))),
+            row=1, col=1)
         fig.add_trace(go.Scatter(
             x=df['Date'],
             y=df['50_sma'],
             name="50 SMA" + str(index),
             visible = False,
-            line=dict(color=('rgba(255, 207, 102, 50)'))))
+            line=dict(color=('rgba(255, 207, 102, 50)'))),
+            row=1, col=1)
         fig.add_trace(go.Scatter(
             x=df['Date'],
             y=df['200_sma'],
             name="200 SMA" + str(index),
             visible = False,
-            line=dict(color=('rgba(207, 255, 102, 50)'))))
+            line=dict(color=('rgba(207, 255, 102, 50)'))),
+            row=1, col=1)
         fig.add_trace(go.Scatter(
             x=df['Date'],
             y=df['low_boll'],
             name="Lower Bollinger Band" + str(index),
             visible = False,
-            line=dict(color=('rgba(50, 102, 255, 50)'))))
+            line=dict(color=('rgba(50, 102, 255, 50)'))),
+            row=1, col=1)
         fig.add_trace(go.Scatter(
             x=df['Date'],
             y=df['high_boll'],
             name="High Bollinger Band" + str(index),
             visible = False,
-            line=dict(color=('rgba(50, 102, 255, 50)'))))
+            line=dict(color=('rgba(50, 102, 255, 50)'))),
+            row=1, col=1)
+        fig.update_layout(template = "plotly_dark")
         
         visible = [False] * (6*index) + [True]*6 + [False]*(6*(size-index-1))
-        buttons.append(dict(label=plotTicker,
-                                 method="update",
-                                 args=[{"visible": visible},
-                                        {"title": plotTicker}]))
+        buttons.append(
+            dict(
+                label=plotTicker,
+                method="update",
+                args=[{"visible": visible}, {"title": plotTicker}])
+            )
         
         
         
         return fig, buttons
-
+    
+    def run(tickers, size):
+        return tickers
+    
+    def get_returns(df):
+        col  = [col for col in df.columns if 'signal' in col]
+        for strategy in col:      
+            df_temp = df.loc[df[strategy].notnull()]
+            df_temp.loc[:, 'traded_value'] = np.where(df_temp[strategy] == "buy", df_temp['Low'] * -1, df_temp['High'])
+            add = df_temp.iloc[-1, df.columns.get_loc('Close')] if df_temp.iloc[-1, df.columns.get_loc(strategy)] == 'buy' else 0
+            portfolio_val = df_temp["traded_value"].sum() + add
+            
+        return col
 
 class Analysis:
     
@@ -268,6 +309,7 @@ class Analysis:
                       \n cash : # {df_temp["traded_value"].sum()} \
                       \n curr. position : # {add} \
                       \n total portfolio value : # {df_temp["traded_value"].sum() + add}')
+                         
 
    
 def Main():
@@ -282,6 +324,7 @@ def Main():
     figure, buttons=data.defineFig(df, tickers[0], size)
     data.exportData(df, tickers[0])
     
+    liste_df = [df]
     for i in range(1, size):
         
         df = data.getData(tickers[i])
@@ -289,13 +332,14 @@ def Main():
         df = data.computeStrategies(df)
         figure, buttons=data.addNew(df, tickers[i], figure, size, i, buttons)
         data.exportData(df, tickers[i])
+        liste_df.append(df)
     figure.update_layout(updatemenus=[dict(active=0, buttons=tuple(buttons))])
-    plot(figure)
 
     analysis_files = Analysis()
     analysis_files.computeStrategyReturns()
-    return df
+    return tickers, liste_df , figure
 
 if __name__ == '__main__':
-    df = Main()
+    tickers, liste_df, figure = Main()
+    # plot(figure)
 
