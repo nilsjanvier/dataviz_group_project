@@ -272,15 +272,16 @@ class Data:
     def run(tickers, size):
         return tickers
     
-    def get_returns(df):
+    def get_returns(self, df):
         col  = [col for col in df.columns if 'signal' in col]
+        strat_totals = []
         for strategy in col:      
             df_temp = df.loc[df[strategy].notnull()]
             df_temp.loc[:, 'traded_value'] = np.where(df_temp[strategy] == "buy", df_temp['Low'] * -1, df_temp['High'])
             add = df_temp.iloc[-1, df.columns.get_loc('Close')] if df_temp.iloc[-1, df.columns.get_loc(strategy)] == 'buy' else 0
             portfolio_val = df_temp["traded_value"].sum() + add
-            
-        return col
+            strat_totals.append(portfolio_val)
+        return strat_totals
 
 class Analysis:
     
