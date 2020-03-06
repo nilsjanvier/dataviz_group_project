@@ -143,7 +143,7 @@ class Data:
         df.to_csv(self.path + ticker + '.csv')
     
     #Move this function
-    def defineFig(self, df, plotTicker, size):
+    def defineFig(self, df, returns, plotTicker, size):
         
         layout = go.Layout()
         fig = go.Figure(layout=layout)
@@ -151,7 +151,9 @@ class Data:
         fig = make_subplots(
             rows=2, cols=1,
             column_widths=[0.6],
-            row_heights=[0.4, 0.6],
+            row_heights=[1, 0.3],
+            subplot_titles=("Prices", "Profit per strategy"),
+            vertical_spacing = 0.3,
             specs=[[{"type": "scatter"}],
                    [{"type": "bar"}]])
         fig.add_trace(
@@ -194,12 +196,20 @@ class Data:
             name="High Bollinger Band",
             line=dict(color=('rgba(50, 102, 255, 50)'))),
             row=1, col=1)
-        # fig.add_trace(go.Bar(
-        #     x=freq["x"][0:10],
-        #     y=df.index, 
-        #     row=1, col=2)
+        x=returns.crypto
+        color=np.array(['rgb(255,255,255)']*x.shape[0])
+        color[x<0]='rgb(255,0, 0)'
+        color[x>0]='rgb(0, 255, 0)'
+        fig.add_trace(go.Bar(
+            y=returns.index,
+            x=x,
+            orientation='h',
+            marker = dict(color=color.tolist()),
+            showlegend=False,
+            name= "Profit per strategy"), 
+            row=2, col=1)
         
-        visible = [True] * 6 + [False] * 6 * (size-1)
+        visible = [True] * 7 + [False] * 7 * (size-1)
         buttons = list()
         buttons.append(dict(label=plotTicker,
                             method="update",
@@ -207,7 +217,7 @@ class Data:
                                    {"title": plotTicker}]))
         return fig, buttons
         
-    def addNew(self, df, plotTicker, prevFig, size, index, buttons):
+    def addNew(self, df, returns, plotTicker, prevFig, size, index, buttons):
         fig = prevFig
         fig.add_trace(
             go.Candlestick(
@@ -216,48 +226,64 @@ class Data:
             close=df['Close'],
             high=df['High'],
             low=df['Low'],
-            name="Candlesticks" + str(index),
+            name="Candlesticks",
             visible = False),
             row=1, col=1)
         fig.add_trace(
             go.Scatter(
             x=df['Date'],
             y=df['20_sma'],
-            name="20 SMA" + str(index),
+            name="20 SMA",
             visible = False,
             line=dict(color=('rgba(102, 207, 255, 50)'))),
             row=1, col=1)
         fig.add_trace(go.Scatter(
             x=df['Date'],
             y=df['50_sma'],
-            name="50 SMA" + str(index),
+            name="50 SMA",
             visible = False,
             line=dict(color=('rgba(255, 207, 102, 50)'))),
             row=1, col=1)
         fig.add_trace(go.Scatter(
             x=df['Date'],
             y=df['200_sma'],
-            name="200 SMA" + str(index),
+            name="200 SMA",
             visible = False,
             line=dict(color=('rgba(207, 255, 102, 50)'))),
             row=1, col=1)
         fig.add_trace(go.Scatter(
             x=df['Date'],
             y=df['low_boll'],
-            name="Lower Bollinger Band" + str(index),
+            name="Lower Bollinger Band",
             visible = False,
             line=dict(color=('rgba(50, 102, 255, 50)'))),
             row=1, col=1)
         fig.add_trace(go.Scatter(
             x=df['Date'],
             y=df['high_boll'],
-            name="High Bollinger Band" + str(index),
+            name="High Bollinger Band",
             visible = False,
             line=dict(color=('rgba(50, 102, 255, 50)'))),
             row=1, col=1)
-        fig.update_layout(template = "plotly_dark")
+        x=returns.crypto
+        color=np.array(['rgb(255,255,255)']*x.shape[0])
+        color[x<0]='rgb(255,0, 0)'
+        color[x>=0]='rgb(0, 255, 0)'
+        fig.add_trace(go.Bar(
+            y=returns.index,
+            x=x,
+            orientation='h',
+            showlegend=False,
+            marker = dict(color=color.tolist()),
+            name= "Profit per strategy",
+            visible=False),
+            row=2, col=1)
+        fig.update_layout(template = "plotly_dark",
+                          autosize=False,
+                          width=1000,
+                          height=1000,)
         
-        visible = [False] * (6*index) + [True]*6 + [False]*(6*(size-index-1))
+        visible = [False] * (7*index) + [True]*7 + [False]*(7*(size-index-1))
         buttons.append(
             dict(
                 label=plotTicker,
@@ -272,16 +298,17 @@ class Data:
     def run(tickers, size):
         return tickers
     
-    def get_returns(self, df):
+    def get_returns(self, df, tickers):
         col  = [col for col in df.columns if 'signal' in col]
         strat_totals = []
-        for strategy in col:      
+        for strategy in col:
+            df_temp = 0
             df_temp = df.loc[df[strategy].notnull()]
             df_temp.loc[:, 'traded_value'] = np.where(df_temp[strategy] == "buy", df_temp['Low'] * -1, df_temp['High'])
             add = df_temp.iloc[-1, df.columns.get_loc('Close')] if df_temp.iloc[-1, df.columns.get_loc(strategy)] == 'buy' else 0
             portfolio_val = df_temp["traded_value"].sum() + add
             strat_totals.append(portfolio_val)
-        return strat_totals
+        return pd.DataFrame(strat_totals, columns=["crypto"], index=["bollinger","moving average","rsi"])
 
 class Analysis:
     
@@ -313,34 +340,38 @@ class Analysis:
                          
 
    
-def Main():
+def main():
     
     data = Data()
     tickers = data.getSymbols()
-    size = 10
+    size = 50
     #On prend juste les 10 premiers pour le moment 
     df = data.getData(tickers[0])
     df = data.computeIndicators(df)
     df = data.computeStrategies(df)
-    figure, buttons=data.defineFig(df, tickers[0], size)
+    returns = data.get_returns(df, tickers[0])
+    figure, buttons=data.defineFig(df, returns, tickers[0], size)
     data.exportData(df, tickers[0])
     
     liste_df = [df]
+    liste_returns = [returns]
     for i in range(1, size):
         
         df = data.getData(tickers[i])
         df = data.computeIndicators(df)
         df = data.computeStrategies(df)
-        figure, buttons=data.addNew(df, tickers[i], figure, size, i, buttons)
+        figure, buttons=data.addNew(df, returns, tickers[i], figure, size, i, buttons)
         data.exportData(df, tickers[i])
         liste_df.append(df)
+        returns = data.get_returns(df, tickers)
+        liste_returns.append(returns)
     figure.update_layout(updatemenus=[dict(active=0, buttons=tuple(buttons))])
 
     analysis_files = Analysis()
     analysis_files.computeStrategyReturns()
-    return tickers, liste_df , figure
+    return tickers, liste_df , liste_returns, figure
 
 if __name__ == '__main__':
-    tickers, liste_df, figure = Main()
+    tickers, liste_df, df_returns, figure = main()
     # plot(figure)
 
